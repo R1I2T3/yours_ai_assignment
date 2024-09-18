@@ -8,7 +8,12 @@ import { Form } from "@/components/ui/form";
 import Link from "next/link";
 import { LoginSchema, LoginType } from "@/lib/zod/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useAction } from "next-safe-action/hooks";
+import { LoginAction } from "./action";
+import { useToast } from "@/hooks/use-toast";
 const LoginForm = () => {
+  const { toast } = useToast();
+  const { executeAsync, isExecuting, result } = useAction(LoginAction);
   const form = useForm<LoginType>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -16,8 +21,15 @@ const LoginForm = () => {
       password: "",
     },
   });
-  const onSubmit = (values: LoginType) => {
-    console.log(values);
+  const onSubmit = async (values: LoginType) => {
+    await executeAsync(values);
+    if (result.serverError || result.validationErrors || result.data?.error) {
+      console.log("I am here");
+
+      toast({
+        title: result.data?.error || "Something went wrong",
+      });
+    }
   };
   return (
     <Form {...form}>
@@ -25,23 +37,17 @@ const LoginForm = () => {
         <FormProvider {...form}>
           <InputFormControl label="Email" name="email" />
           <InputFormControl label="Password" name="password" type="password" />
-          <div className="flex justify-between items-center">
-            <Link
-              href={"/auth/forgot_password"}
-              className="text-sm hover:text-blue-500 hover:underline underline-offset-2"
-            >
-              {"Forgot password"}
-            </Link>
-            <Link
-              href={"/auth/signup"}
-              className="text-sm hover:text-blue-500 hover:underline underline-offset-2"
-            >
-              {"Create a account"}
-            </Link>
-          </div>
-          <Button className="bg-blue-500 hover:bg-blue-700 dark:bg-blue-600 w-full text-white text-xl">
-            {/* {isExecuting ? "Login..." : "Login"} */}
-            Login
+          <Link
+            href={"/auth/signup"}
+            className="text-sm hover:text-blue-500 hover:underline underline-offset-2 mt-2 flex justify-end"
+          >
+            {"Create a account"}
+          </Link>
+          <Button
+            className="bg-blue-500 hover:bg-blue-700 dark:bg-blue-600 w-full text-white text-xl"
+            disabled={isExecuting}
+          >
+            {isExecuting ? "Login..." : "Login"}
           </Button>
         </FormProvider>
       </form>

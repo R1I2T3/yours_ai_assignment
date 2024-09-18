@@ -1,11 +1,11 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-export interface Task extends Document {
+export interface Task {
   title: string;
   description: string;
   status: string;
 }
-export interface Boards extends Document {
+export interface Boards {
   Tasks: Task[];
 }
 export interface User extends Document {
@@ -15,7 +15,7 @@ export interface User extends Document {
   boards: Boards[];
 }
 
-export const TaskSchema = new Schema<Task>(
+export const TaskSchema: Schema<Task> = new Schema(
   {
     title: { type: String, required: true },
     description: { type: String, required: true },
@@ -24,26 +24,28 @@ export const TaskSchema = new Schema<Task>(
   { timestamps: true }
 );
 
-export const BoardSchema = new Schema<Boards>(
+export const BoardSchema: Schema<Boards> = new Schema(
   {
     Tasks: [TaskSchema],
   },
   { timestamps: true }
 );
 
-export const UserSchema = new Schema<User>({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  boards: [BoardSchema],
-});
+const UserSchema = new Schema<User>(
+  {
+    username: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    boards: { type: [BoardSchema], default: [] }, // Array of boards
+  },
+  { timestamps: true }
+);
 
 const UserModel =
-  (mongoose.models.User as mongoose.Model<User>) ||
-  mongoose.model<User>("User", UserSchema);
+  mongoose.models.User || mongoose.model<User>("User", UserSchema);
 const TaskModel =
   (mongoose.models.Task as mongoose.Model<Task>) ||
-  mongoose.model<Task>("Task");
+  mongoose.model<Task>("Task", TaskSchema);
 const BoardModel =
   (mongoose.models.Boards as mongoose.Model<Boards>) ||
   mongoose.model("Boards", BoardSchema);

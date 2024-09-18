@@ -10,8 +10,10 @@ import { SignupSchema, SignupType } from "@/lib/zod/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SignUpAction } from "./action";
 import { useAction } from "next-safe-action/hooks";
+import { useToast } from "@/hooks/use-toast";
 const SignupForm = () => {
-  const { executeAsync } = useAction(SignUpAction);
+  const { toast } = useToast();
+  const { executeAsync, isExecuting, result } = useAction(SignUpAction);
   const form = useForm<SignupType>({
     resolver: zodResolver(SignupSchema),
     defaultValues: {
@@ -20,8 +22,13 @@ const SignupForm = () => {
       email: "",
     },
   });
-  const onSubmit = (values: SignupType) => {
-    executeAsync(values);
+  const onSubmit = async (values: SignupType) => {
+    await executeAsync(values);
+    if (result.serverError || result.validationErrors || result.data?.error) {
+      toast({
+        title: result.data?.error || "Something went wrong",
+      });
+    }
   };
   return (
     <Form {...form}>
@@ -38,9 +45,8 @@ const SignupForm = () => {
               {"Login to account"}
             </Link>
           </div>
-
           <Button className="bg-blue-500  hover:bg-blue-600 dark:bg-blue-600 w-full text-white text-xl">
-            {"Signup"}
+            {isExecuting ? "Signing up..." : "Signup"}
           </Button>
         </FormProvider>
       </form>
