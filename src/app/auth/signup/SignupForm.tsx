@@ -2,14 +2,26 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Form, useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import InputFormControl from "@/components/FormControl/InputFormField";
-import { FormProvider } from "react-hook-form";
+import { Form } from "@/components/ui/form";
 import Link from "next/link";
+import { SignupSchema, SignupType } from "@/lib/zod/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { SignUpAction } from "./action";
+import { useAction } from "next-safe-action/hooks";
 const SignupForm = () => {
-  const form = useForm();
-  const onSubmit = (values) => {
-    console.log(values);
+  const { executeAsync } = useAction(SignUpAction);
+  const form = useForm<SignupType>({
+    resolver: zodResolver(SignupSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      email: "",
+    },
+  });
+  const onSubmit = (values: SignupType) => {
+    executeAsync(values);
   };
   return (
     <Form {...form}>

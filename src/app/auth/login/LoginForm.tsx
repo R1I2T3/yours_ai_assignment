@@ -6,9 +6,17 @@ import { useForm, FormProvider } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import Link from "next/link";
+import { LoginSchema, LoginType } from "@/lib/zod/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
 const LoginForm = () => {
-  const form = useForm();
-  const onSubmit = (values) => {
+  const form = useForm<LoginType>({
+    resolver: zodResolver(LoginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+  const onSubmit = (values: LoginType) => {
     console.log(values);
   };
   return (
