@@ -45,3 +45,10 @@ export const createTodo = async ({
   await Promise.all([currentBoard.save(), newTodo.save()]);
   return newTodo;
 };
+
+export const DeleteBoard = async (boardId: string) => {
+  const board = await BoardModel.findById(boardId);
+  if (!board) return;
+  await TaskModel.deleteMany({ _id: { $in: board.Tasks } });
+  await BoardModel.findByIdAndDelete(boardId);
+};
