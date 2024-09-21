@@ -21,6 +21,6 @@ export const createUser = async (user: {
 };
 
 export const getUserById = async (id: string) => {
-  const user = await UserModel.findById(id);
+  const user = await UserModel.findOne({ _id: id });
   return user;
 };
