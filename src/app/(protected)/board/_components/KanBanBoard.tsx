@@ -1,149 +1,151 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
   DndContext,
+  DragOverlay,
   closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import CreateTodo from "./CreateTodo";
-const initialTasks = {
-  "To Do": [
-    { id: "task1", content: "Create project plan" },
-    { id: "task2", content: "Design UI mockups" },
-  ],
-  "In Progress": [{ id: "task3", content: "Implement login functionality" }],
-  Completed: [{ id: "task4", content: "Set up project repository" }],
-};
-
-const SortableItem = ({ id, content }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <li ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card>
-        <CardContent className="p-2">{content}</CardContent>
-      </Card>
-    </li>
-  );
-};
-
-const KanbanBoard = () => {
-  const [tasks, setTasks] = useState(initialTasks);
+import { arrayMove } from "@dnd-kit/sortable";
+import { Column } from "./Columns";
+import { SortableTask } from "./SortTableTask";
+import { useTasks, Task } from "@/components/TaskContext";
+import { updateTaskStatusAction } from "../../_actions/updateTaskStatus";
+import { useAction } from "next-safe-action/hooks";
+export default function KanBanBoard() {
+  const { tasks, setTasks } = useTasks();
+  const { execute } = useAction(updateTaskStatusAction);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor)
   );
 
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveTask(tasks.find((task) => task.id === active.id) || null);
+  };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
     if (!over) return;
 
-    const activeContainer = Object.keys(tasks).find((key) =>
-      tasks[key].find((task) => task.id === active.id)
-    );
-    const overContainer = Object.keys(tasks).find((key) =>
-      tasks[key].find((task) => task.id === over.id)
-    );
+    const activeTask = tasks.find((task) => task.id === active.id);
+    if (!activeTask) return;
 
-    if (activeContainer !== overContainer) {
-      setTasks((prev) => {
-        const activeItems = prev[activeContainer];
-        const overItems = prev[overContainer];
-        const activeIndex = activeItems.findIndex(
-          (item) => item.id === active.id
+    const overId = over.id;
+
+    if (overId === "todo" || overId === "progress" || overId === "completed") {
+      execute({ id: active.id.toString(), status: overId });
+
+      if (activeTask.status !== overId) {
+        setTasks((tasks) =>
+          tasks.map((task) =>
+            task.id === active.id
+              ? { ...task, status: overId as Task["status"] }
+              : task
+          )
         );
-        const overIndex = overItems.findIndex((item) => item.id === over.id);
-
-        return {
-          ...prev,
-          [activeContainer]: [
-            ...prev[activeContainer].filter((item) => item.id !== active.id),
-          ],
-          [overContainer]: [
-            ...prev[overContainer].slice(0, overIndex),
-            activeItems[activeIndex],
-            ...prev[overContainer].slice(overIndex),
-          ],
-        };
-      });
+      }
     } else {
-      setTasks((prev) => {
-        const activeIndex = prev[activeContainer].findIndex(
-          (item) => item.id === active.id
-        );
-        const overIndex = prev[overContainer].findIndex(
-          (item) => item.id === over.id
-        );
-        return {
-          ...prev,
-          [overContainer]: arrayMove(
-            prev[overContainer],
-            activeIndex,
-            overIndex
-          ),
-        };
+      const overTask = tasks.find((task) => task.id === overId);
+      if (!overTask || activeTask.status === overTask.status) return;
+      // execute({ id: active.id, status: overTask.status });
+      setTasks((tasks) => {
+        const activeIndex = tasks.findIndex((t) => t.id === active.id);
+        const overIndex = tasks.findIndex((t) => t.id === overId);
+
+        return arrayMove(tasks, activeIndex, overIndex).map((task) => {
+          if (task.id === active.id) {
+            return { ...task, status: overTask.status };
+          }
+          return task;
+        });
       });
     }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeTask = tasks.find((task) => task.id === active.id);
+    if (!activeTask) return;
+
+    const overId = over.id;
+
+    if (overId === "todo" || overId === "progress" || overId === "completed") {
+      if (activeTask.status !== overId) {
+        setTasks((tasks) =>
+          tasks.map((task) =>
+            task.id === active.id
+              ? { ...task, status: overId as Task["status"] }
+              : task
+          )
+        );
+      }
+    } else {
+      const overTask = tasks.find((task) => task.id === overId);
+      if (!overTask) return;
+
+      if (activeTask.status !== overTask.status) {
+        setTasks((tasks) =>
+          tasks.map((task) => {
+            if (task.id === active.id) {
+              return { ...task, status: overTask.status };
+            }
+            return task;
+          })
+        );
+      } else if (active.id !== over.id) {
+        setTasks((tasks) => {
+          const oldIndex = tasks.findIndex((t) => t.id === active.id);
+          const newIndex = tasks.findIndex((t) => t.id === over.id);
+
+          return arrayMove(tasks, oldIndex, newIndex);
+        });
+      }
+    }
+
+    setActiveTask(null);
   };
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4">
-        {Object.entries(tasks).map(([columnId, columnTasks]) => (
-          <div key={columnId} className="flex-1">
-            <Card>
-              <CardHeader>
-                <h2 className="text-xl font-semibold">{columnId}</h2>
-              </CardHeader>
-              <CardContent>
-                <SortableContext
-                  items={columnTasks.map((task) => task.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <ul className="space-y-2">
-                    {columnTasks.map((task) => (
-                      <SortableItem
-                        key={task.id}
-                        id={task.id}
-                        content={task.content}
-                      />
-                    ))}
-                  </ul>
-                </SortableContext>
-              </CardContent>
-            </Card>
-          </div>
-        ))}
+      <div className="flex flex-col md:flex-row justify-center items-start space-y-4 md:space-y-0 md:space-x-4">
+        <Column
+          title="To Do"
+          tasks={tasks.filter((task) => task.status === "todo")}
+          status="todo"
+        />
+        <Column
+          title="In Progress"
+          tasks={tasks.filter((task) => task.status === "progress")}
+          status="progress"
+        />
+        <Column
+          title="Completed"
+          tasks={tasks.filter((task) => task.status === "completed")}
+          status="completed"
+        />
       </div>
+      <DragOverlay>
+        {activeTask ? <SortableTask task={activeTask} /> : null}
+      </DragOverlay>
     </DndContext>
   );
-};
-
-export default KanbanBoard;
+}

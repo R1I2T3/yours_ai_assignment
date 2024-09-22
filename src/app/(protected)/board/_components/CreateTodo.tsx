@@ -21,10 +21,11 @@ import { TodoCreationSchema, TodoCreationType } from "@/lib/zod/board";
 import { useAction } from "next-safe-action/hooks";
 import { CreateTodoAction } from "../../_actions/CreateTodoAction";
 import { useToast } from "@/hooks/use-toast";
-
+import { useTasks } from "@/components/TaskContext";
 const CreateTodo = ({ boardId }: { boardId: string }) => {
-  const { executeAsync, isExecuting, result } = useAction(CreateTodoAction);
+  const { executeAsync, isExecuting } = useAction(CreateTodoAction);
   const { toast } = useToast();
+  const { setTasks, tasks } = useTasks();
   const form = useForm<TodoCreationType>({
     resolver: zodResolver(TodoCreationSchema),
     defaultValues: {
@@ -33,16 +34,19 @@ const CreateTodo = ({ boardId }: { boardId: string }) => {
     },
   });
   const onSubmit = async (values: TodoCreationType) => {
-    await executeAsync({
+    const result = await executeAsync({
       boardId: boardId,
       ...values,
     });
-    if (result.serverError || result.validationErrors) {
+    if (result?.data?.error) {
       toast({
         title: "Something went wrong",
       });
-      form.reset();
     }
+    if (result?.data?.newTask) {
+      setTasks([...tasks, result.data?.newTask]);
+    }
+    form.reset();
   };
   return (
     <AlertDialog>

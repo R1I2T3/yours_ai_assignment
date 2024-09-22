@@ -38,11 +38,12 @@ export const createTodo = async ({
     title: title,
     description: description,
   });
-  console.log(newTodo);
-
   if (!newTodo || !currentBoard) return;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   currentBoard.Tasks.push(newTodo?._id);
   await Promise.all([currentBoard.save(), newTodo.save()]);
+
   return newTodo;
 };
 
@@ -51,4 +52,18 @@ export const DeleteBoard = async (boardId: string) => {
   if (!board) return;
   await TaskModel.deleteMany({ _id: { $in: board.Tasks } });
   await BoardModel.findByIdAndDelete(boardId);
+};
+
+export const updateTask = async ({
+  TaskId,
+  status,
+}: {
+  TaskId: string;
+  status: string;
+}) => {
+  const task = await TaskModel.findById(TaskId);
+  if (!task) return;
+  task.status = status;
+  await task.save();
+  return JSON.parse(JSON.stringify({ ...task, id: task._id }));
 };

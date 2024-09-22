@@ -2,7 +2,6 @@
 import { authActionClient } from "@/lib/safe-action";
 import { z } from "zod";
 import { createTodo } from "@/data-access/board-persistance";
-import { revalidatePath } from "next/cache";
 const CreateTodoSchema = z.object({
   title: z.string().min(1),
   description: z.string().max(50),
@@ -11,8 +10,9 @@ const CreateTodoSchema = z.object({
 export const CreateTodoAction = authActionClient
   .schema(CreateTodoSchema)
   .action(async ({ parsedInput }) => {
-    console.log(parsedInput);
-
-    await createTodo(parsedInput);
-    return revalidatePath(`/board/${parsedInput.boardId}`, "page");
+    const task = JSON.parse(JSON.stringify(await createTodo(parsedInput)));
+    if (!task) return { error: "Could not create task" };
+    return {
+      newTask: { ...task, id: task._id },
+    };
   });
