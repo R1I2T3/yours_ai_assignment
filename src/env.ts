@@ -7,7 +7,7 @@ export const env = createEnv({
     JWT_SECRET: z.string().min(6),
   },
   runtimeEnv: {
-    DB_URL: process.env.DB_URL,
+    DB_URL: process.env.MONGODB_URI,
     JWT_SECRET: process.env.JWT_SECRET,
   },
 });
